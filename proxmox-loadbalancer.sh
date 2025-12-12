@@ -253,6 +253,58 @@ dry_run() {
     fi
 }
 
+# Otomatik VM tagleme
+auto_tag_vms() {
+    log "INFO" "=========================================="
+    log "INFO" "OTOMATİK VM TAG & RENK"
+    log "INFO" "=========================================="
+
+    local json=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null)
+
+    echo "$json" | jq -r '.[] | select(.type=="qemu") | "\(.vmid)|\(.name)|\(.maxmem)|\(.node)|\(.status)"' | while IFS="|" read -r vmid name maxmem node status; do
+        local tags=""
+        local mem_gb=$((maxmem / 1024 / 1024 / 1024))
+
+        # OS tipi belirleme (config'den)
+        local ostype=$(pvesh get /nodes/$node/qemu/$vmid/config --output-format json 2>/dev/null | jq -r '.ostype // "unknown"')
+
+        # OS tag
+        case "$ostype" in
+            l26|l24) tags="linux" ;;
+            win*|w2k*) tags="windows" ;;
+            *) tags="other" ;;
+        esac
+
+        # RAM boyutuna göre tag
+        if [[ "$mem_gb" -ge 32 ]]; then
+            tags="$tags,high-memory"
+        elif [[ "$mem_gb" -ge 16 ]]; then
+            tags="$tags,medium-memory"
+        else
+            tags="$tags,low-memory"
+        fi
+
+        # Status tag
+        if [[ "$status" == "running" ]]; then
+            tags="$tags,running"
+        else
+            tags="$tags,stopped"
+        fi
+
+        # Excluded VM kontrolü
+        if [[ " ${EXCLUDED_VMS[*]} " =~ " $vmid " ]]; then
+            tags="$tags,protected"
+        fi
+
+        # Tag uygula
+        log "INFO" "VM $vmid ($name): $tags"
+        qm set "$vmid" --tags "$tags" 2>/dev/null || true
+
+    done
+
+    log "INFO" "Tagleme tamamlandı"
+}
+
 # Kullanım bilgisi
 usage() {
     echo "Kullanım: $0 [SEÇENEK]"
@@ -261,6 +313,7 @@ usage() {
     echo "  balance     Cluster'ı dengele (varsayılan)"
     echo "  status      Durum raporu göster"
     echo "  dry-run     Test modu (değişiklik yapmaz)"
+    echo "  auto-tag    VM'lere otomatik tag ve renk ver"
     echo "  help        Bu yardım mesajını göster"
     echo ""
 }
@@ -276,6 +329,9 @@ main() {
             ;;
         dry-run)
             dry_run
+            ;;
+        auto-tag)
+            auto_tag_vms
             ;;
         help|--help|-h)
             usage
