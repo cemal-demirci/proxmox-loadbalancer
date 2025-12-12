@@ -52,7 +52,7 @@ Automatic VM distribution and load balancing script for Proxmox VE clusters.
 
 ```bash
 # On your Proxmox node
-git clone https://github.com/ZD-IT/proxmox-loadbalancer.git /opt/proxmox-loadbalancer
+git clone https://github.com/cemal-demirci/proxmox-loadbalancer.git /opt/proxmox-loadbalancer
 ```
 
 ### 2. Configure
