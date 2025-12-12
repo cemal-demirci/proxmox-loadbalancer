@@ -1,225 +1,432 @@
-# Proxmox Load Balancer
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cemal-demirci/proxmox-loadbalancer/master/assets/logo.svg" alt="Proxmox Load Balancer" width="200"/>
+</p>
 
-Automatic VM distribution and load balancing script for Proxmox VE clusters.
+<h1 align="center">🚀 Proxmox Load Balancer</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Proxmox VE](https://img.shields.io/badge/Proxmox%20VE-7.x%20%7C%208.x-orange)](https://www.proxmox.com/)
-[![Shell Script](https://img.shields.io/badge/Shell-Bash-green)](https://www.gnu.org/software/bash/)
+<p align="center">
+  <strong>Proxmox VE cluster'ları için otomatik VM dağıtım ve yük dengeleme aracı</strong>
+</p>
 
-## Features
+<p align="center">
+  <a href="#-özellikler">Özellikler</a> •
+  <a href="#-kurulum">Kurulum</a> •
+  <a href="#-kullanım">Kullanım</a> •
+  <a href="#-konfigürasyon">Konfigürasyon</a> •
+  <a href="#-sorun-giderme">Sorun Giderme</a>
+</p>
 
-- **Automatic Balancing**: Distributes VMs across nodes based on RAM usage
-- **HA Integration**: Fully compatible with Proxmox HA Manager
-- **Flexible Configuration**: Customizable thresholds, excluded VMs, and more
-- **Dry-Run Mode**: Test changes before applying them
-- **Detailed Logging**: Keeps track of all operations
-- **Cron Support**: Ready for automatic scheduling
+<p align="center">
+  <img src="https://img.shields.io/badge/Proxmox%20VE-7.x%20%7C%208.x-E57000?style=for-the-badge&logo=proxmox&logoColor=white" alt="Proxmox VE"/>
+  <img src="https://img.shields.io/badge/Lisans-MIT-green?style=for-the-badge" alt="License"/>
+  <img src="https://img.shields.io/badge/Shell-Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Bash"/>
+  <img src="https://img.shields.io/badge/Durum-Aktif-success?style=for-the-badge" alt="Status"/>
+</p>
 
-## Architecture
+---
+
+## 📊 Nasıl Çalışır?
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Proxmox Cluster                      │
-├─────────────┬─────────────┬─────────────────────────────┤
-│    Node1    │    Node2    │           Node3             │
-│   (12%)     │   (14%)     │          (20%)              │
-│             │             │                             │
-│  ┌───────┐  │  ┌───────┐  │  ┌───────┐  ┌───────┐      │
-│  │ VM A  │  │  │ VM D  │  │  │ VM G  │  │ VM H  │ ...  │
-│  │ VM B  │  │  │ VM E  │  │  │ VM I  │  │ VM J  │      │
-│  │ VM C  │  │  │ VM F  │  │  │ VM K  │  │ VM L  │      │
-│  └───────┘  │  └───────┘  │  └───────┘  └───────┘      │
-└─────────────┴─────────────┴─────────────────────────────┘
-                     │
-                     ▼
-        ┌─────────────────────────┐
-        │   Shared Storage        │
-        │   (NFS/Ceph/etc.)       │
-        └─────────────────────────┘
+                                    🔄 DENGELEME ÖNCESİ
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                                                                   ║
+    ║   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          ║
+    ║   │   NODE 1    │    │   NODE 2    │    │   NODE 3    │          ║
+    ║   │   ░░░░░░    │    │   ░░░░░░    │    │   ████████  │          ║
+    ║   │    %12      │    │    %14      │    │    %45 ❌   │          ║
+    ║   │   5 VM      │    │   5 VM      │    │   20 VM     │          ║
+    ║   └─────────────┘    └─────────────┘    └─────────────┘          ║
+    ║                                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+                                      │
+                                      │ 🔄 Script Çalışıyor...
+                                      ▼
+                                    ✅ DENGELEME SONRASI
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                                                                   ║
+    ║   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          ║
+    ║   │   NODE 1    │    │   NODE 2    │    │   NODE 3    │          ║
+    ║   │   ████      │    │   ████      │    │   █████     │          ║
+    ║   │    %20      │    │    %22      │    │    %25 ✅   │          ║
+    ║   │   8 VM      │    │   8 VM      │    │   14 VM     │          ║
+    ║   └─────────────┘    └─────────────┘    └─────────────┘          ║
+    ║                                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════╝
 ```
 
-## Requirements
+---
 
-- Proxmox VE 7.x or 8.x
-- HA Manager enabled
-- Shared storage (NFS, Ceph, etc.)
-- Root access
-- `jq` package (auto-installed if missing)
+## ✨ Özellikler
 
-## Quick Start
+<table>
+<tr>
+<td width="50%">
 
-### 1. Clone the Repository
+### 🎯 Akıllı Dengeleme
+RAM kullanımına göre VM'leri otomatik olarak node'lar arasında dağıtır
+
+### 🔒 HA Entegrasyonu
+Proxmox HA Manager ile tam uyumlu çalışır
+
+### 🛡️ VM Koruma
+USB passthrough veya özel donanım gerektiren VM'leri hariç tutabilme
+
+</td>
+<td width="50%">
+
+### 🧪 Test Modu
+Değişiklik yapmadan önce dry-run ile test etme imkanı
+
+### 📝 Detaylı Loglama
+Tüm işlemlerin kaydını tutar
+
+### ⏰ Zamanlama
+Cron ile otomatik çalıştırma desteği
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗️ Mimari
+
+```
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                        PROXMOX CLUSTER                               │
+    │                                                                      │
+    │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐         │
+    │  │     NODE 1     │  │     NODE 2     │  │     NODE 3     │         │
+    │  │  ┌──────────┐  │  │  ┌──────────┐  │  │  ┌──────────┐  │         │
+    │  │  │ 🖥️ VM-A  │  │  │  │ 🖥️ VM-D  │  │  │  │ 🖥️ VM-G  │  │         │
+    │  │  │ 🖥️ VM-B  │  │  │  │ 🖥️ VM-E  │  │  │  │ 🖥️ VM-H  │  │         │
+    │  │  │ 🖥️ VM-C  │  │  │  │ 🖥️ VM-F  │  │  │  │ 🖥️ VM-I  │  │         │
+    │  │  └──────────┘  │  │  └──────────┘  │  │  │ 🖥️ VM-J  │  │         │
+    │  │                │  │                │  │  └──────────┘  │         │
+    │  │  RAM: 92GB     │  │  RAM: 105GB    │  │  RAM: 152GB    │         │
+    │  │  CPU: 12%      │  │  CPU: 14%      │  │  CPU: 20%      │         │
+    │  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘         │
+    │          │                   │                   │                  │
+    │          └───────────────────┼───────────────────┘                  │
+    │                              │                                      │
+    │                    ┌─────────▼─────────┐                            │
+    │                    │  📦 SHARED STORAGE │                            │
+    │                    │   NFS / Ceph / ZFS │                            │
+    │                    │      15 TB         │                            │
+    │                    └───────────────────┘                            │
+    └──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📋 Gereksinimler
+
+| Gereksinim | Açıklama |
+|:----------:|:---------|
+| 🖥️ | Proxmox VE 7.x veya 8.x |
+| ⚡ | HA Manager aktif |
+| 💾 | Shared storage (NFS, Ceph, vb.) |
+| 🔑 | Root erişimi |
+| 📦 | `jq` paketi (otomatik yüklenir) |
+
+---
+
+## 🚀 Kurulum
+
+### 1️⃣ Repoyu Klonla
 
 ```bash
-# On your Proxmox node
+# Proxmox sunucusunda çalıştır
 git clone https://github.com/cemal-demirci/proxmox-loadbalancer.git /opt/proxmox-loadbalancer
 ```
 
-### 2. Configure
-
-```bash
-# Edit configuration
-nano /opt/proxmox-loadbalancer/config.cfg
-```
-
-Key settings:
-```bash
-# Define your cluster nodes
-NODES="node1 node2 node3"
-
-# Balancing threshold (percentage)
-THRESHOLD=15
-
-# VMs that should not be migrated (e.g., USB passthrough)
-EXCLUDED_VMS=(
-    100     # VM with USB device
-)
-```
-
-### 3. Make Executable
+### 2️⃣ Çalıştırılabilir Yap
 
 ```bash
 chmod +x /opt/proxmox-loadbalancer/proxmox-loadbalancer.sh
 ```
 
-### 4. Test
+### 3️⃣ Konfigürasyonu Düzenle
 
 ```bash
-# Check cluster status
+nano /opt/proxmox-loadbalancer/config.cfg
+```
+
+### 4️⃣ Test Et
+
+```bash
+# Durum kontrolü
 ./proxmox-loadbalancer.sh status
 
-# Dry-run (no changes)
+# Test modu
 ./proxmox-loadbalancer.sh dry-run
 ```
 
-### 5. Schedule (Optional)
+---
+
+## 🎮 Kullanım
 
 ```bash
-# Run every 6 hours
-echo "0 */6 * * * /opt/proxmox-loadbalancer/proxmox-loadbalancer.sh balance >> /var/log/proxmox-loadbalancer.log 2>&1" | crontab -
+┌─────────────────────────────────────────────────────────────┐
+│                     KOMUTLAR                                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  📊 ./proxmox-loadbalancer.sh status   → Durum raporu       │
+│                                                             │
+│  🧪 ./proxmox-loadbalancer.sh dry-run  → Test modu          │
+│                                                             │
+│  ⚖️  ./proxmox-loadbalancer.sh balance → Dengeleme yap      │
+│                                                             │
+│  ❓ ./proxmox-loadbalancer.sh help     → Yardım             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Usage
-
-| Command | Description |
-|---------|-------------|
-| `./proxmox-loadbalancer.sh status` | Show cluster status report |
-| `./proxmox-loadbalancer.sh dry-run` | Test mode (no changes) |
-| `./proxmox-loadbalancer.sh balance` | Balance the cluster |
-| `./proxmox-loadbalancer.sh help` | Show help message |
-
-### Example Output
+### 📊 Örnek Çıktı
 
 ```
 ==========================================
-CLUSTER STATUS REPORT
+CLUSTER DURUM RAPORU
 ==========================================
 
-NODE RESOURCE USAGE:
+NODE KAYNAK KULLANIMI:
 ----------------------
-Node       RAM Usage      RAM Total       Percent    VM Count
+Node       RAM Kullanım   RAM Toplam      Yüzde     VM Sayısı
 --------------------------------------------------------------
-Node1      92GB           754GB           12%        5
-Node2      105GB          754GB           14%        5
-Node3      152GB          754GB           20%        14
+VMP2       92GB            754GB           %12        5
+VMP3       105GB           754GB           %14        5
+VMP4       152GB           754GB           %20        14
 
-VM DISTRIBUTION:
+VM DAĞILIMI:
 ------------
-service vm:102 (Node3, started)
-service vm:110 (Node2, started)
-service vm:111 (Node1, started)
+✅ service vm:102 (VMP4, started)
+✅ service vm:110 (VMP3, started)
+✅ service vm:111 (VMP2, started)
 ...
+
+[INFO] Cluster dengeli durumda (%8 <= %15)
 ```
 
-## Configuration Reference
+---
 
-### Node Settings
+## ⚙️ Konfigürasyon
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `NODES` | Space-separated list of cluster nodes | `"node1 node2 node3"` |
-| `PREFERRED_NODE` | Preferred node (e.g., storage server) | `""` |
-
-### Balancing Settings
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `THRESHOLD` | Balance threshold (%) | `15` |
-| `MAX_MIGRATIONS` | Max migrations per run | `5` |
-| `MIGRATION_WAIT` | Wait time between migrations (sec) | `120` |
-
-### Excluded VMs
+### 📁 config.cfg
 
 ```bash
+# ═══════════════════════════════════════════
+# 🖥️ NODE AYARLARI
+# ═══════════════════════════════════════════
+
+# Cluster'daki node'lar
+NODES="VMP2 VMP3 VMP4"
+
+# Tercih edilen node
+PREFERRED_NODE="VMP4"
+
+# ═══════════════════════════════════════════
+# ⚖️ DENGELEME AYARLARI
+# ═══════════════════════════════════════════
+
+# Dengeleme eşiği (%)
+THRESHOLD=15
+
+# Maksimum migration sayısı
+MAX_MIGRATIONS=5
+
+# Migration bekleme süresi (saniye)
+MIGRATION_WAIT=120
+
+# ═══════════════════════════════════════════
+# 🛡️ HARİÇ TUTULAN VM'LER
+# ═══════════════════════════════════════════
+
 EXCLUDED_VMS=(
-    500     # VM with USB passthrough
-    100     # Critical VM that shouldn't move
+    500     # USB dongle olan VM
 )
+
+# ═══════════════════════════════════════════
+# 📝 LOG AYARLARI
+# ═══════════════════════════════════════════
+
+LOG_FILE="/var/log/proxmox-loadbalancer.log"
+LOG_LEVEL="INFO"
 ```
 
-### Log Settings
+### 📊 Parametre Referansı
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `LOG_FILE` | Log file path | `/var/log/proxmox-loadbalancer.log` |
-| `LOG_LEVEL` | Log level (DEBUG, INFO, WARN, ERROR) | `INFO` |
+<table>
+<tr>
+<th>Parametre</th>
+<th>Açıklama</th>
+<th>Varsayılan</th>
+</tr>
+<tr>
+<td><code>NODES</code></td>
+<td>Cluster node'ları (boşlukla ayrılmış)</td>
+<td><code>"node1 node2 node3"</code></td>
+</tr>
+<tr>
+<td><code>THRESHOLD</code></td>
+<td>Dengeleme eşiği (%)</td>
+<td><code>15</code></td>
+</tr>
+<tr>
+<td><code>MAX_MIGRATIONS</code></td>
+<td>Tek çalışmada maksimum migration</td>
+<td><code>5</code></td>
+</tr>
+<tr>
+<td><code>MIGRATION_WAIT</code></td>
+<td>Migration bekleme süresi (saniye)</td>
+<td><code>120</code></td>
+</tr>
+<tr>
+<td><code>EXCLUDED_VMS</code></td>
+<td>Taşınmayacak VM ID'leri</td>
+<td><code>()</code></td>
+</tr>
+</table>
 
-## How It Works
+---
 
-1. **Check Balance**: Calculates RAM usage percentage for each node
-2. **Find Imbalance**: Compares highest and lowest loaded nodes
-3. **Select VM**: Picks the largest VM from the most loaded node (excluding protected VMs)
-4. **Migrate**: Uses HA Manager to migrate VM to least loaded node
-5. **Wait**: Waits for migration to complete
-6. **Repeat**: Continues until balanced or max migrations reached
+## ⏰ Otomatik Zamanlama
 
-## Troubleshooting
-
-### Migration Fails
-
-1. **Check NFS Mount**
 ```bash
-# Verify on all nodes
+# Her 6 saatte bir çalıştır
+echo "0 */6 * * * /opt/proxmox-loadbalancer/proxmox-loadbalancer.sh balance" | crontab -
+
+# Veya her gece 02:00'de
+echo "0 2 * * * /opt/proxmox-loadbalancer/proxmox-loadbalancer.sh balance" | crontab -
+```
+
+---
+
+## 🔄 Çalışma Prensibi
+
+```
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    🔄 DENGELEME DÖNGÜSÜ                     │
+    └─────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+                    ┌────────────────────────┐
+                    │  1️⃣ Node Yüklerini Al  │
+                    │    (RAM Kullanımı)     │
+                    └───────────┬────────────┘
+                                │
+                                ▼
+                    ┌────────────────────────┐
+                    │  2️⃣ Fark Hesapla       │
+                    │  (Max - Min Yük)       │
+                    └───────────┬────────────┘
+                                │
+                                ▼
+                    ┌────────────────────────┐
+                    │  3️⃣ Eşik Kontrolü      │◄──────┐
+                    │  Fark > %15 ?          │       │
+                    └───────────┬────────────┘       │
+                          │           │              │
+                     EVET │           │ HAYIR        │
+                          ▼           ▼              │
+            ┌──────────────────┐  ┌──────────┐      │
+            │ 4️⃣ En Büyük VM'i │  │ ✅ Bitti │      │
+            │    Seç & Taşı    │  └──────────┘      │
+            └────────┬─────────┘                    │
+                     │                              │
+                     ▼                              │
+            ┌──────────────────┐                    │
+            │ 5️⃣ Bekle (120s)  │────────────────────┘
+            └──────────────────┘
+```
+
+---
+
+## 🔧 Sorun Giderme
+
+<details>
+<summary><b>❌ Migration Başarısız Oluyor</b></summary>
+
+```bash
+# 1. NFS Mount Kontrolü
 mount | grep nfs-storage
-```
 
-2. **Check HA Status**
-```bash
+# 2. HA Durumu Kontrolü
 ha-manager status
-```
 
-3. **Check Logs**
-```bash
+# 3. Log Kontrolü
 tail -f /var/log/proxmox-loadbalancer.log
 journalctl -u pve-ha-lrm -f
 ```
 
-### Node Unreachable
+</details>
+
+<details>
+<summary><b>❌ Node Erişilemiyor</b></summary>
 
 ```bash
-# Test node connectivity
-ping node2
-ssh root@node2 hostname
+# Node bağlantısını test et
+ping VMP2
+ssh root@VMP2 hostname
 ```
 
-### VM Cannot Be Migrated
+</details>
 
-- USB passthrough? Add to `EXCLUDED_VMS`
-- Local disk? Move to shared storage
-- Check HA group restrictions
+<details>
+<summary><b>❌ VM Taşınamıyor</b></summary>
 
-## Contributing
+- 🔌 USB passthrough varsa → `EXCLUDED_VMS`'e ekle
+- 💾 Local disk varsa → Shared storage'a taşı
+- 🔒 HA grubu kısıtlamalarını kontrol et
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Author
-
-**Zero Density IT Team** - 2025
+</details>
 
 ---
 
-*Made with love for the Proxmox community*
+## 📈 Performans İpuçları
+
+| İpucu | Açıklama |
+|:-----:|:---------|
+| 🎯 | `THRESHOLD` değerini ortamınıza göre ayarlayın |
+| ⏱️ | Yoğun saatlerde cron çalıştırmaktan kaçının |
+| 📊 | Düzenli olarak logları kontrol edin |
+| 🛡️ | Kritik VM'leri `EXCLUDED_VMS`'e ekleyin |
+
+---
+
+## 🤝 Katkıda Bulunma
+
+Katkılarınızı bekliyoruz! Pull Request göndermekten çekinmeyin.
+
+1. Fork edin
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Commit edin (`git commit -m 'Add amazing feature'`)
+4. Push edin (`git push origin feature/amazing-feature`)
+5. Pull Request açın
+
+---
+
+## 📜 Lisans
+
+Bu proje MIT Lisansı ile lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+
+---
+
+## 👨‍💻 Yazar
+
+<p align="center">
+  <strong>Cemal Demirci</strong><br>
+  <a href="https://github.com/cemal-demirci">GitHub</a>
+</p>
+
+---
+
+<p align="center">
+  <sub>Proxmox topluluğu için ❤️ ile yapıldı</sub>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/stars/cemal-demirci/proxmox-loadbalancer?style=social" alt="Stars"/>
+  <img src="https://img.shields.io/github/forks/cemal-demirci/proxmox-loadbalancer?style=social" alt="Forks"/>
+</p>
