@@ -826,14 +826,14 @@ Bu proje MIT Lisansı ile lisanslanmıştır. Detaylar için [LICENSE](LICENSE) 
           <img src="https://github.com/cemal-demirci.png" width="100px;" alt="Cemal Demirci"/><br />
           <sub><b>Cemal Demirci</b></sub>
         </a><br />
-        <sub>💻 Geliştirici</sub>
+        <sub>🏗️ Mimar & Geliştirici</sub>
       </td>
       <td align="center">
         <a href="https://github.com/muammer-yesilyagci">
           <img src="https://github.com/muammer-yesilyagci.png" width="100px;" alt="Muammer Yeşilyağcı"/><br />
           <sub><b>Muammer Yeşilyağcı</b></sub>
         </a><br />
-        <sub>🏗️ Mimar & Geliştirici</sub>
+        <sub>🧪 Test & Destek</sub>
       </td>
     </tr>
   </table>
