@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proxmox Load Balancer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); }
+        .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="min-h-screen text-white p-8">
+    <header class="max-w-6xl mx-auto mb-8">
+        <h1 class="text-3xl font-bold">Proxmox Load Balancer</h1>
+        <p class="text-gray-400">Cluster Monitoring Dashboard v2.0</p>
+    </header>
+    
+    <main class="max-w-6xl mx-auto">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass rounded-xl p-6 border border-white/10">
+                <p class="text-gray-400 text-sm">Nodes</p>
+                <p id="nodeCount" class="text-3xl font-bold">-</p>
+            </div>
+            <div class="glass rounded-xl p-6 border border-white/10">
+                <p class="text-gray-400 text-sm">VMs</p>
+                <p id="vmCount" class="text-3xl font-bold">-</p>
+            </div>
+            <div class="glass rounded-xl p-6 border border-white/10">
+                <p class="text-gray-400 text-sm">Avg CPU</p>
+                <p id="avgCpu" class="text-3xl font-bold">-</p>
+            </div>
+            <div class="glass rounded-xl p-6 border border-white/10">
+                <p class="text-gray-400 text-sm">Balance</p>
+                <p id="balanceScore" class="text-3xl font-bold">-</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="glass rounded-xl p-6 border border-white/10">
+                <h3 class="font-semibold mb-4">VM Distribution</h3>
+                <canvas id="vmChart"></canvas>
+            </div>
+            <div class="glass rounded-xl p-6 border border-white/10">
+                <h3 class="font-semibold mb-4">Resource Usage</h3>
+                <canvas id="resourceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Nodes -->
+        <div class="glass rounded-xl p-6 border border-white/10">
+            <h3 class="font-semibold mb-4">Node Status</h3>
+            <div id="nodeCards" class="grid md:grid-cols-3 gap-4"></div>
+        </div>
+    </main>
+
+    <script>
+        let vmChart, resourceChart;
+        
+        function initCharts() {
+            vmChart = new Chart(document.getElementById('vmChart'), {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6','#10b981','#f59e0b'] }] },
+                options: { plugins: { legend: { labels: { color: '#9ca3af' } } } }
+            });
+            resourceChart = new Chart(document.getElementById('resourceChart'), {
+                type: 'bar',
+                data: { labels: [], datasets: [
+                    { label: 'CPU %', data: [], backgroundColor: '#f59e0b' },
+                    { label: 'RAM %', data: [], backgroundColor: '#3b82f6' }
+                ]},
+                options: { scales: { y: { ticks: { color: '#9ca3af' } }, x: { ticks: { color: '#9ca3af' } } },
+                           plugins: { legend: { labels: { color: '#9ca3af' } } } }
+            });
+        }
+
+        async function refresh() {
+            const [summary, dist, nodes] = await Promise.all([
+                fetch('/api/summary').then(r => r.json()),
+                fetch('/api/distribution').then(r => r.json()),
+                fetch('/api/nodes').then(r => r.json())
+            ]);
+            
+            document.getElementById('nodeCount').textContent = summary?.node_count || '-';
+            document.getElementById('vmCount').textContent = summary?.total_vms || '-';
+            document.getElementById('avgCpu').textContent = (summary?.avg_cpu || 0) + '%';
+            document.getElementById('balanceScore').textContent = (summary?.balance_score || 0) + '%';
+            
+            vmChart.data.labels = dist.labels;
+            vmChart.data.datasets[0].data = dist.vm_counts;
+            vmChart.update();
+            
+            resourceChart.data.labels = dist.labels;
+            resourceChart.data.datasets[0].data = dist.cpu_usage;
+            resourceChart.data.datasets[1].data = dist.mem_usage;
+            resourceChart.update();
+            
+            document.getElementById('nodeCards').innerHTML = nodes.map(n => `
+                <div class="bg-white/5 rounded-lg p-4">
+                    <div class="flex justify-between mb-2">
+                        <span class="font-medium">${n.name}</span>
+                        <span class="text-green-400 text-sm">${n.status}</span>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div><span class="text-gray-400">CPU:</span> ${n.cpu}%</div>
+                        <div><span class="text-gray-400">RAM:</span> ${n.mem_percent}%</div>
+                        <div><span class="text-gray-400">VMs:</span> ${n.vm_count}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        initCharts();
+        refresh();
+        setInterval(refresh, 30000);
+    </script>
+</body>
+</html>
