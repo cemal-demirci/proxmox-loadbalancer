@@ -41,10 +41,12 @@ echo -e "  Found: $NODES"
 echo -e "${YELLOW}[2/6] Creating directories...${NC}"
 mkdir -p $INSTALL_DIR/dashboard/templates
 
-echo -e "${YELLOW}[3/6] Downloading files...${NC}"
+echo -e "${YELLOW}[3/7] Downloading files...${NC}"
 curl -sSL "$GITHUB_RAW/dashboard/app.py" -o "$INSTALL_DIR/dashboard/app.py"
 curl -sSL "$GITHUB_RAW/dashboard/templates/index.html" -o "$INSTALL_DIR/dashboard/templates/index.html"
+curl -sSL "$GITHUB_RAW/balancer.py" -o "$INSTALL_DIR/balancer.py"
 curl -sSL "$GITHUB_RAW/ui/proxlb-panel.js" -o "/tmp/proxlb-panel.js"
+chmod +x "$INSTALL_DIR/balancer.py"
 echo -e "  ${GREEN}Downloaded${NC}"
 
 echo -e "${YELLOW}[4/6] Installing dependencies...${NC}"
@@ -87,7 +89,53 @@ systemctl is-active --quiet proxlb-dashboard && echo -e "  ${GREEN}Service start
 
 rm -f /tmp/proxlb-panel.js
 
-echo -e "\n${GREEN}Installation Complete!${NC}"
-echo -e "Dashboard: ${BLUE}http://$CURRENT_IP:5000${NC}"
-echo -e "UI: ${BLUE}Look for 'Load Balancer' button${NC}"
-echo -e "${YELLOW}Refresh browser with Ctrl+Shift+R${NC}"
+echo -e "${YELLOW}[7/7] Setting up cron & config...${NC}"
+CRON_CMD="0 */6 * * * /usr/bin/python3 $INSTALL_DIR/balancer.py >> /var/log/proxmox-loadbalancer.log 2>&1"
+(crontab -l 2>/dev/null | grep -v "balancer.py"; echo "$CRON_CMD") | crontab -
+
+[ ! -f "$INSTALL_DIR/config.yaml" ] && cat > "$INSTALL_DIR/config.yaml" << 'YAML'
+enabled: true
+mode: combined
+threshold: 15
+dry_run: false
+cpu_enabled: true
+cpu_threshold: 80
+cpu_weight: 1.0
+memory_enabled: true
+memory_threshold: 85
+memory_weight: 2.0
+disk_enabled: true
+disk_threshold: 85
+disk_weight: 1.0
+storage_enabled: true
+storage_threshold: 80
+storage_weight: 1.5
+migration_type: online
+max_migrations: 3
+with_local_disks: false
+migration_bandwidth: 0
+migration_timeout: 300
+exclude_vmids: ""
+exclude_tags: "kritik,pinned,no-migrate"
+exclude_nodes: ""
+exclude_names: ""
+notify_webhook: false
+notify_webhook_url: ""
+YAML
+echo -e "  ${GREEN}Done${NC}"
+
+echo -e "\n${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║              Installation Complete!                        ║${NC}"
+echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "Dashboard:  ${BLUE}http://$CURRENT_IP:5000${NC}"
+echo -e "Balancer:   ${BLUE}$INSTALL_DIR/balancer.py${NC}"
+echo -e "Config:     ${BLUE}$INSTALL_DIR/config.yaml${NC}"
+echo -e "Cron:       ${BLUE}Every 6 hours${NC}"
+echo ""
+echo -e "${YELLOW}Commands:${NC}"
+echo -e "  $INSTALL_DIR/balancer.py --status   # Cluster status"
+echo -e "  $INSTALL_DIR/balancer.py --dry-run  # Test mode"
+echo -e "  $INSTALL_DIR/balancer.py            # Run balancing"
+echo ""
+echo -e "${YELLOW}Refresh browser: Ctrl+Shift+R${NC}"
