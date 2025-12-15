@@ -1,0 +1,96 @@
+# Proxmox Load Balancer v2.0 - Turkce Konfigurasyon
+
+proxmox:
+  hosts: ["172.16.0.65"]
+  user: "root@pam"
+  password: "1q2w3e4r"
+  ssl_verify: false
+  timeout: 30
+
+dengeleme:
+  aktif: true
+  metod: "memory"  # memory | cpu | disk
+  mod: "used"      # used | assigned | psi
+  esik: 15
+  max_migration: 5
+  migration_bekleme: 120
+  live_migration: true
+  paralel:
+    aktif: true
+    max_is: 3
+  buyuk_once: true
+  kaynak_tipi: "all"  # vm | ct | all
+  local_disk_dahil: false
+  
+  # Balloon Memory
+  balloon:
+    aktif: true
+    min_memory_mb: 1024
+    hedef_kullanim: 80
+
+bakim:
+  nodeler: []
+
+haric:
+  vmler: [500]
+  containerlar: []
+  nodeler: []
+
+# Ozel VM Ayarlari (SQL, kritik sistemler)
+ozel_ayarlar:
+  # SQL Server icin
+  sql_sunucular:
+    vmler: [300, 301]
+    min_memory_gb: 8
+    max_cpu_kullanim: 70
+    migration_izni: false
+    balloon_devre_disi: true
+  
+  # Domain Controller icin
+  domain_controllers:
+    vmler: [110, 212]
+    migration_izni: true
+    anti_affinity: true
+    
+  # Kritik sistemler
+  kritik:
+    vmler: [500]
+    migration_izni: false
+    node_sabitleme: "VMP3"
+
+affinity:
+  gruplar:
+    - isim: "domain-controllers"
+      vmler: [110, 212]
+      ayni_node: false
+    - isim: "mikro-cluster"
+      vmler: [300, 301]
+      ayni_node: false
+
+overprovisioning:
+  aktif: true
+  max_memory: 90
+  max_cpu: 85
+
+servis:
+  daemon: false
+  aralik: 1
+  aralik_birimi: "hours"
+
+log:
+  seviye: "INFO"
+  dosya: "/var/log/proxmox-lb.log"
+
+bildirim:
+  email:
+    aktif: false
+  webhook:
+    aktif: false
+  telegram:
+    aktif: false
+
+dashboard:
+  aktif: true
+  port: 5000
+  host: "0.0.0.0"
+  yenileme: 30
